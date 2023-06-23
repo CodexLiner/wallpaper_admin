@@ -9,19 +9,7 @@ public class SqlResponse {
         public result(String fieldCount, String insertId, String fileName) {
             this.fieldCount = fieldCount;
             this.insertId = insertId;
-            this.fileName = fileName;
         }
-
-        String fileName;
-
-        public String getFileName() {
-            return fileName;
-        }
-
-        public void setFileName(String fileName) {
-            this.fileName = fileName;
-        }
-
         @Override
         public String toString() {
             return "result{" +

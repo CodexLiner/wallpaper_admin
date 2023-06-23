@@ -14,11 +14,8 @@ import android.widget.*
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -31,13 +28,7 @@ import java.io.IOException
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_PARAM1 = "param1"
 private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [SecondTab.newInstance] factory method to
- * create an instance of this fragment.
- */
-class SecondTab : Fragment() {
+class SecondTab : Fragment() , ImageUpload {
     // TODO: Rename and change types of parameters
     private var param1: String? = null
     private var param2: String? = null
@@ -62,29 +53,36 @@ class SecondTab : Fragment() {
         return inflater.inflate(R.layout.fragment_second_tab, container, false)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         textArea = view.findViewById(R.id.name_edit)
         val items =
             listOf("No Category Found") // Replace with your actual data
-        dialog = Dialog(requireContext())
         val adapter = ArrayAdapter(
             requireContext(),
             R.layout.spinner_item,
             items
         )
-        val spinner = view.findViewById<Spinner>(R.id.spinner)
-
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         imageView = view.findViewById<ImageView>(R.id.imageView)
         view.findViewById<Button>(R.id.btnUploadCAT).setOnClickListener {
-            addCategory()
+            showProgress(true)
+            if (textArea.text.isBlank()){
+                Toast.makeText(requireContext(), "label should not empty", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+                return@setOnClickListener
+            }
+            val bitmap =
+                getBitmapFromUri(selectedImageUri) // Replace with the actual path to your image file
+            GlobalScope.launch {
+                AsyncTask(this@SecondTab, bitmap, "category_thumbnails", "").execute()
+            }
         }
         view.findViewById<Button>(R.id.btnSelectImage).setOnClickListener {
             selectImage()
         }
     }
-
     companion object {
         fun newInstance(param1: String, param2: String) =
             SecondTab().apply {
@@ -94,14 +92,12 @@ class SecondTab : Fragment() {
                 }
             }
     }
-
-
     private fun selectImage() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, MainActivity.REQUEST_IMAGE_PICK)
     }
-
-    fun showProgress(boolean: Boolean) {
+    private fun showProgress(boolean: Boolean) {
+        dialog = Dialog(requireContext())
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(true)
         dialog.setContentView(R.layout.screens_dialog)
@@ -114,16 +110,15 @@ class SecondTab : Fragment() {
         dialog.window?.attributes = layoutParams
 
         if (boolean) dialog.show() else dialog.dismiss()
-
     }
-
     @OptIn(DelicateCoroutinesApi::class)
-    private fun addCategory() {
+    private fun addCategory(imageUploadResponse: ImageUploadResponse) {
         requireActivity().runOnUiThread {
             showProgress(true)
         }
         if (textArea.text.isBlank()) {
             Toast.makeText(requireContext(), "name is required", Toast.LENGTH_SHORT).show()
+            dialog.dismiss()
             return
         }
         val retrofit = Retrofit.Builder()
@@ -133,20 +128,13 @@ class SecondTab : Fragment() {
             .build()
 
         val apiService = retrofit.create(Api::class.java)
-        val bitmap =
-            getBitmapFromUri(selectedImageUri) // Replace with the actual path to your image file
-        val stream = ByteArrayOutputStream()
-        bitmap?.compress(Bitmap.CompressFormat.JPEG, 100, stream)
-        val byteArray = stream.toByteArray()
-
-        val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), byteArray)
-        val imagePart = MultipartBody.Part.createFormData("image", "file.jpg", requestFile)
-        val category = MultipartBody.Part.createFormData("category", textArea.text.toString())
+        val namePart = MultipartBody.Part.createFormData("category", textArea.text.toString())
+        val imagePart = MultipartBody.Part.createFormData("fileName", imageUploadResponse.fileName)
 
         // Inside a CoroutineScope
         GlobalScope.launch {
             try {
-                val response: Call<SqlResponse> = apiService.addCategory(imagePart, category)
+                val response: Call<SqlResponse> = apiService.addCategory(namePart, imagePart)
                 response.enqueue(object : Callback<SqlResponse> {
                     override fun onResponse(
                         call: Call<SqlResponse>,
@@ -157,11 +145,11 @@ class SecondTab : Fragment() {
                                 textArea.text = null
                                 Toast.makeText(
                                     requireContext(),
-                                    "wallpaper uploaded successfully",
+                                    "Category Added Successfully",
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 requireActivity().runOnUiThread {
-                                   showProgress(false)
+                                  dialog.dismiss()
                                 }
                             } else {
                                 Toast.makeText(
@@ -170,7 +158,7 @@ class SecondTab : Fragment() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 requireActivity().runOnUiThread {
-                                   showProgress(false)
+                                    dialog.dismiss()
                                 }
                             }
                         }
@@ -179,7 +167,7 @@ class SecondTab : Fragment() {
                     override fun onFailure(call: Call<SqlResponse>, t: Throwable) {
                         view?.findViewById<TextView>(R.id.err_text)?.text = t.localizedMessage
                         requireActivity().runOnUiThread {
-                           showProgress(false)
+                            dialog.dismiss()
                         }
                     }
 
@@ -196,7 +184,6 @@ class SecondTab : Fragment() {
 
 
     }
-
     private fun getBitmapFromUri(uri: Uri?): Bitmap? {
         uri?.let {
             return try {
@@ -208,7 +195,6 @@ class SecondTab : Fragment() {
         }
         return null
     }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -217,6 +203,11 @@ class SecondTab : Fragment() {
                 selectedImageUri = uri
                 imageView.setImageURI(uri)
             }
+        }
+    }
+    override fun onImageUploaded(imageUploadResponse: ImageUploadResponse?) {
+        if (imageUploadResponse?.fileName != null){
+           requireActivity().runOnUiThread {  addCategory(imageUploadResponse) }
         }
     }
 

@@ -56,15 +56,19 @@ public class AsyncTask extends android.os.AsyncTask<Void, Void, ImageUploadRespo
         try {
             response = client.newCall(request).execute();
             Gson gson = new Gson();
+            assert response.body() != null;
             return gson.fromJson(response.body().string() , ImageUploadResponse.class);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            Log.d("TAG", "doInBackground: "+e);
         }
+        return null;
     }
     @Override
     protected void onPostExecute(ImageUploadResponse imageUploadResponse) {
         super.onPostExecute(imageUploadResponse);
-        imageUpload.onImageUploade(imageUploadResponse);
+        if (imageUploadResponse!=null){
+            imageUpload.onImageUploaded(imageUploadResponse);
+        }
 
     }
 }

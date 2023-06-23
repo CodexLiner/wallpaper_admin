@@ -28,6 +28,6 @@ class RecyclerAdapter(private val list: MutableList<wallpapers.item>)  : Recycle
         Glide.with(holder.itemView.context)
             .load(BASE_URL_IMAGE + list[position].category.trim() + "/" + list[position].image.trim())
             .diskCacheStrategy(DiskCacheStrategy.DATA)
-            .placeholder(R.drawable.baseline_crop_free_24).into(holder.sImage)
+            .placeholder(R.drawable.baseline_image_24).into(holder.sImage)
     }
 }
