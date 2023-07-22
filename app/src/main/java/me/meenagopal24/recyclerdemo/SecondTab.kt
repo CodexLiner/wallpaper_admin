@@ -102,6 +102,8 @@ class SecondTab : Fragment() , ImageUpload {
         dialog.setCancelable(true)
         dialog.setContentView(R.layout.screens_dialog)
         dialog.window?.setBackgroundDrawableResource(R.color.transparent)
+        val  text : TextView = dialog.findViewById(R.id.dialog_text)
+        text.text = "Adding Category Please Wait"
         val layoutParams: WindowManager.LayoutParams = WindowManager.LayoutParams()
         layoutParams.copyFrom(dialog.window?.attributes)
 
@@ -113,9 +115,6 @@ class SecondTab : Fragment() , ImageUpload {
     }
     @OptIn(DelicateCoroutinesApi::class)
     private fun addCategory(imageUploadResponse: ImageUploadResponse) {
-        requireActivity().runOnUiThread {
-            showProgress(true)
-        }
         if (textArea.text.isBlank()) {
             Toast.makeText(requireContext(), "name is required", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
@@ -177,7 +176,7 @@ class SecondTab : Fragment() , ImageUpload {
                 e.printStackTrace()
                 requireActivity().runOnUiThread {
                     view?.findViewById<TextView>(R.id.err_text)?.text = e.toString()
-                     showProgress(false)
+                    dialog.dismiss()
                 }
             }
         }

@@ -13,9 +13,9 @@ class MyPagerAdapter(fm: FragmentManager) : FragmentPagerAdapter(fm) {
     override fun getItem(position: Int): Fragment {
         // Return the appropriate fragment for each tab
         return when (position) {
-            0->HomeFragment()
-            1 -> FirstTab()
-            2 -> SecondTab()
+            2 -> HomeFragment()
+            0 -> FirstTab()
+            1 -> SecondTab()
             else -> throw IllegalArgumentException("Invalid tab position: $position")
         }
     }
@@ -27,9 +27,9 @@ class MyPagerAdapter(fm: FragmentManager) : FragmentPagerAdapter(fm) {
     override fun getPageTitle(position: Int): CharSequence? {
         // Return the title for each tab
         return when (position) {
-            0 -> "Home"
-            1 -> "Wallpaper"
-            2-> " Category"
+            0 -> "Add Wallpaper"
+            1 -> "Add Category"
+            2 -> "Wallpapers"
             else -> null
         }
     }

@@ -29,20 +29,22 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Query
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-data class dataClass (val name: String, val filename: String, val category: String)
+data class dataClass(val name: String, val filename: String, val category: String)
 interface Api {
     @GET("category")
     suspend fun getCategories(): Category
+
     @Multipart
     @POST("wallpaper")
     fun uploadImage(
-       @Part name: MultipartBody.Part,
-       @Part fileName: MultipartBody.Part,
-       @Part category: MultipartBody.Part
+        @Part name: MultipartBody.Part,
+        @Part fileName: MultipartBody.Part,
+        @Part category: MultipartBody.Part,
     ): Call<SqlResponse>
 
     @Multipart
@@ -54,6 +56,12 @@ interface Api {
 
     @GET("/wallpaper")
     fun getWallpaper(): Call<wallpapers?>?
+    @GET("/update/delete")
+    fun deleteWallpaper(
+        @Query("uuid") uuid: String,
+        @Query("name") name: String,
+        @Query("category") category: String,
+    ): Call<delete_response?>?
 
 }
 
@@ -209,10 +217,12 @@ class FirstTab : Fragment(), ImageUpload, AdapterView.OnItemSelectedListener {
         GlobalScope.launch {
             try {
                 val namePart = MultipartBody.Part.createFormData("name", editText.text.toString())
-                val categoryPart = MultipartBody.Part.createFormData("category", this@FirstTab.category)
-                val filenamePart = MultipartBody.Part.createFormData("filename", imageUploadResponse.fileName)
+                val categoryPart =
+                    MultipartBody.Part.createFormData("category", this@FirstTab.category)
+                val filenamePart =
+                    MultipartBody.Part.createFormData("filename", imageUploadResponse.fileName)
                 val response: Call<SqlResponse> =
-                    apiService.uploadImage(namePart , filenamePart , categoryPart)
+                    apiService.uploadImage(namePart, filenamePart, categoryPart)
                 response.enqueue(object : retrofit2.Callback<SqlResponse> {
                     override fun onResponse(
                         call: Call<SqlResponse>,
@@ -260,6 +270,8 @@ class FirstTab : Fragment(), ImageUpload, AdapterView.OnItemSelectedListener {
         dialog.setCancelable(true)
         dialog.setContentView(R.layout.screens_dialog)
         dialog.window?.setBackgroundDrawableResource(R.color.transparent)
+        val  text : TextView = dialog.findViewById(R.id.dialog_text)
+        text.text = "Uploading Wallpaper Please Wait"
         val layoutParams: WindowManager.LayoutParams = WindowManager.LayoutParams()
         layoutParams.copyFrom(dialog.window?.attributes)
 
